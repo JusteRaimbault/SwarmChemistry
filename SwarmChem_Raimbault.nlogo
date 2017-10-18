@@ -1,14 +1,14 @@
 extensions[table]
 
 __includes[
-  "utils/FileUtilities.nls" 
+  "utils/FileUtilities.nls"
   "utils/StringUtilities.nls"
   "utils/SortingUtilities.nls"
 ]
 
 
 globals [
-  
+
   ;;species description
   ;;universal map
   ;;format is: (param-name (String),species-id (int)) -> param-value
@@ -19,19 +19,19 @@ globals [
   ;; - id of species has to be canonical (1 -> species-number)
   ;; - "proportion" param is required
   species-description
-  
+
   ;;list of names of variables parameters
   param-names
   species-ids
-  
+
   ;;total agent number independant from setup (proportions of species are set according to param)
   ;agents-number
-  
-   
-   
+
+
+
   ;;var for reporters
   moran-populations
-   
+
 ]
 
 
@@ -41,47 +41,47 @@ breed [agents agent]
 
 
 agents-own [
-  
+
   ;;characteristics
-  
+
     ;;not essential, but useful in case of extension
     ;;(ex species changes would need recoloration)
     species
-    
+
     ;;params
     perception-radius
     normal-speed
     max-speed
-  
+
   ;;forces
-  
+
     ;;cohesion
     cohesive-force-strength ;; \in [0;1]
     ;;alignement
     aligning-force-strength ;; \in [0;1]
     ;;separation
     separating-force-strength ;; \in [0;100]
-    
+
     steering-proba
     pace-keeping-tendancy
-  
-  
+
+
   ;;Runtime vars
-  
+
   ;;speeds
-  
+
     ;;using vectors in NL is not practical (here we take lists)
     ;;but the "natural" solution using built-in heading var and a scalar for the norm of the speed
     ;;(and the same for the acceleration) posed problems in the implementation of the variation formula
-    ;;(in particular, need of reciprocal determination of the heading, quite tricky) 
+    ;;(in particular, need of reciprocal determination of the heading, quite tricky)
     ;;speeds : list [x,y]
     current-speed
     next-speed
-    
+
     ;;pseudo accel (discrete derivative)
     ;;list [x,y]
     acceleration
-  
+
 ]
 
 
@@ -93,7 +93,7 @@ agents-own [
 
 to setup
   setup-world
-  setup-species-description  
+  setup-species-description
   setup-agents
   setup-plots-and-reporters
 end
@@ -112,18 +112,18 @@ to setup-species-description
   set species-description table:make
   set param-names []
   set species-ids []
-  
+
   if setup-mode = "predefined1" [set setup-mode "file" set input-file "data/sample1.txt"]
   if setup-mode = "predefined2" [set setup-mode "file" set input-file "data/sample2.txt"]
-  
+
   ifelse setup-mode = "file" [
     ;;read config file - skip first comment line
     ;;second line is params list
     let specieses but-first read-file input-file
     set param-names explode " " first specieses set specieses but-first specieses
-    
+
     set species-number 0
-    
+
     foreach specieses [
        ;;skip comment lines
        if first ? != "#" [
@@ -134,14 +134,14 @@ to setup-species-description
            table:put species-description (list id (item (i + 1) param-names)) (read-from-string ?)
            set i i + 1
          ]
-         
+
          ;;global var species-number has to be set because used in the reading of the table
          ;set species-number species-number + 1
-         
+
          set species-ids lput id species-ids
        ]
     ]
-    
+
   ][
     ;;else do a "random" config
     if setup-mode = "random" [
@@ -157,15 +157,15 @@ to setup-species-description
         table:put species-description (list current-species-id "max-speed") 20
         table:put species-description (list current-species-id "cohesive-force-strength") max list 0 (min list (random-normal cohesive-force-strength-mean (cohesive-force-strength-mean / 2)) 1)
         table:put species-description (list current-species-id "aligning-force-strength") max list 0 (min list (random-normal aligning-force-strength-mean (aligning-force-strength-mean / 2)) 1)
-        table:put species-description (list current-species-id "separating-force-strength") max list 0 (min list (random-normal separating-force-strength-mean (separating-force-strength-mean / 2)) 100) 
-        table:put species-description (list current-species-id "steering-proba") max list 0 (min list (random-normal steering-proba-mean (steering-proba-mean / 2)) 0.5) 
-        table:put species-description (list current-species-id "pace-keeping-tendancy") max list 0 (min list (random-normal pace-keeping-tendancy-mean (pace-keeping-tendancy-mean / 2)) 0.5)     
-        
+        table:put species-description (list current-species-id "separating-force-strength") max list 0 (min list (random-normal separating-force-strength-mean (separating-force-strength-mean / 2)) 100)
+        table:put species-description (list current-species-id "steering-proba") max list 0 (min list (random-normal steering-proba-mean (steering-proba-mean / 2)) 0.5)
+        table:put species-description (list current-species-id "pace-keeping-tendancy") max list 0 (min list (random-normal pace-keeping-tendancy-mean (pace-keeping-tendancy-mean / 2)) 0.5)
+
         set species-ids lput current-species-id species-ids
         set current-species-id current-species-id + 1
       ]
-      
-      
+
+
     ]
   ]
 end
@@ -178,12 +178,12 @@ to setup-agents
     ;;output config for this species
     output-print word "Species " ?
     let id ? foreach but-first param-names [output-print word word word "  " ? " = " (table:get species-description (list id ?))]
-    
+
     ;;create agents
     let current-agent-number round (agents-number * (table:get species-description (list ? "proportion")) / 100)
     create-agents current-agent-number [new-agent ?]
   ]
-  
+
 end
 
 ;;"Constructor" for breed agent;
@@ -195,31 +195,31 @@ to new-agent [species-id]
   foreach but-first but-first param-names [
      run word word word "set " ? " " (table:get species-description (list species-id ?))
   ]
-  
+
   set species species-id
-  
+
   ;;random position ?
   setxy random-xcor random-ycor
   set size 4 set shape "circle"
-  
+
   ;;color
   set color approximate-rgb (cohesive-force-strength * 255) (aligning-force-strength * 255) (separating-force-strength * 2.55)
-  
+
   ;;need also to setup runtime params
   let dir random 360 ;;random direction for the speed
   set current-speed list (normal-speed * (cos dir)) (normal-speed * (sin dir))
   set next-speed current-speed
   set acceleration list 0 0
-  
+
 end
 
 
 to setup-plots-and-reporters
-  
+
   ;;setup moran table
   set moran-populations table:make
   clear-table-moran
-   
+
   ;setup plots
   ;clustering : add one pen for each population
   set-current-plot "Species clustering"
@@ -228,7 +228,7 @@ to setup-plots-and-reporters
     let a one-of (agents with [species = ?])
     set-plot-pen-color [color] of a
   ]
-   
+
 end
 
 
@@ -237,7 +237,7 @@ end
 to go
   ask agents [calculate-move]
   ask agents [move]
-  plot-reporters
+  ;plot-reporters
   tick
 end
 
@@ -253,15 +253,15 @@ to export-configuration
   ;;print first comment line : date and time, etc.
   ;;Add runtime params, system ? TODO
   let commt word "# Configuration file automatically created at " date-and-time
-  ;;create file in write mode - delete if exists. Must have rw rights on file. 
+  ;;create file in write mode - delete if exists. Must have rw rights on file.
   if file-exists? export-file-path [file-delete export-file-path]
   print-in-file export-file-path commt
-  
+
   ;;write params list
   ;;beware not putting a space at the end
   let header "" foreach but-last param-names [set header word word header ? " "] set header word header last param-names
   print-in-file export-file-path header
-  
+
   ;;export values for each species
   foreach species-ids [
     let values "" let id ?
@@ -269,7 +269,7 @@ to export-configuration
     set values word values (table:get species-description (list id last param-names))
     print-in-file export-file-path values
   ]
-  
+
 end
 
 
@@ -285,7 +285,7 @@ end
 to calculate-move
   ;;find neighbours
   let neighs other agents in-radius perception-radius
-  
+
   ifelse count neighs = 0 [
     ;;random steering = Straying
     ;;[equivalent but simpler to randomize the norm of acceleration] NO here Y but not for the following
@@ -299,24 +299,24 @@ to calculate-move
     let x-acc (cohesive-force-strength * (mean-xcor - xcor)) + (aligning-force-strength * (mean-xspeed - first current-speed )) + separating-force-strength * x-separating
     let y-acc (cohesive-force-strength * (mean-ycor - ycor)) + (aligning-force-strength * (mean-yspeed - last current-speed)) + separating-force-strength * y-separating
     set acceleration list x-acc y-acc
-    
+
     ;;Whim
     if random-float 1 < steering-proba [set acceleration list (first acceleration - 5 + random-float 10) (last acceleration - 5 + random-float 10)]
   ]
-  
+
   ;;update speed
   ;;discrete integration: includes real time-step value
   set next-speed list (first current-speed + (first acceleration * time-step)) (last current-speed + (last acceleration * time-step))
-  
+
   ;;regulation of speed: can go other max-speed
   let regulation-factor min list 1 (max-speed / norm-2 next-speed)
   set next-speed list (regulation-factor * first next-speed) (regulation-factor * last next-speed)
-  
+
   ;;pace keeping:
   ;;agents will regulate following their tendancy to flock and the normal speed (vector)
   let pc-factor normal-speed / norm-2 next-speed
   set next-speed list ((pace-keeping-tendancy * pc-factor * first next-speed) + ((1 - pace-keeping-tendancy) * first next-speed)) ((pace-keeping-tendancy * pc-factor * last next-speed) + ((1 - pace-keeping-tendancy) * last next-speed))
-  
+
 end
 
 ;;just move by updating speeds and positions
@@ -363,7 +363,7 @@ to-report spatial-autocorrelation-index [species-id]
          ;;DEBUG show implode (list "agent " ([xcor] of first ag) " - " ([ycor] of first ag) " in " i " - " j )
          table:put moran-populations (list i j) (table:get moran-populations (list i j) + 1)
          set ag but-first ag
-         if length ag = 0 [set ended? true]        
+         if length ag = 0 [set ended? true]
        ]
        set ymax ymax + clustering-grid-size
        set j j + 1
@@ -371,7 +371,7 @@ to-report spatial-autocorrelation-index [species-id]
      set xmax xmax + clustering-grid-size set ymax clustering-grid-size
      set i i + 1 set j 0
   ]
-  
+
   let N length table:keys moran-populations
   let d-mean pop-count / N
   let W 0 let S 0 let norm-factor 0
@@ -396,9 +396,8 @@ to clear-table-moran
        table:put moran-populations (list i j) 0 set j j + 1
      ] set j 0 set i i + 1
   ]
-  
-end
 
+end
 
 
 
@@ -469,7 +468,7 @@ species-number
 species-number
 0
 10
-2
+0
 1
 1
 NIL
@@ -550,7 +549,7 @@ INPUTBOX
 207
 242
 input-file
-data/sample2.txt
+data/sample1.txt
 1
 0
 String
@@ -563,7 +562,7 @@ CHOOSER
 setup-mode
 setup-mode
 "file" "random" "predefined1" "predefined2"
-1
+0
 
 TEXTBOX
 7
@@ -861,7 +860,6 @@ M2 Complex Systems, Ecole Polytechnique ; LVMT, ENPC
 	Title = {Quantifying urban form: compactness versus' sprawl'},
 	Volume = {42},
 	Year = {2005}}
-
 @#$#@#$#@
 default
 true
@@ -1169,7 +1167,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.2
+NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1177,9 +1175,9 @@ NetLogo 5.0.2
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0
